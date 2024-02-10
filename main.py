@@ -3,6 +3,7 @@ from database import Base, engine
 from sqlalchemy.orm import Session
 import models
 import schemas
+from typing import Optional
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -35,6 +36,22 @@ def create_todo(todo: schemas.ToDo):
 
     # return the id
     return f"created todo item with id {id}"
+
+@app.get('/todo/filter')
+def search_todo(task_filt: Optional[str] = None):
+    session = Session(bind=engine, expire_on_commit=False)
+    
+    if task_filt is not None:
+        todo = session.query(models.ToDo).filter(models.ToDo.task.ilike(f'%{task_filt}%')).all()
+    else:
+        todo = session.query(models.ToDo).all()
+    
+    session.close()
+    
+    if not todo:
+        raise HTTPException(status_code=404, detail=f"todo item with name {task_filt} not found")
+
+    return todo
 
 @app.get("/todo/{id}")
 def read_todo(id: int):
@@ -76,6 +93,8 @@ def update_todo(id: int, task: str):
         raise HTTPException(status_code=404, detail=f"todo item with id {id} not found")
 
     return todo
+
+
 
 @app.delete("/todo/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_todo(id: int):
